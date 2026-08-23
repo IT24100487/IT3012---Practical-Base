@@ -1,6 +1,7 @@
 # visual_grid_game.py
 import random
 import tkinter as tk
+from turtle import pos
 
 
 class VisualGridHuntGame:
@@ -35,6 +36,17 @@ class VisualGridHuntGame:
             if tuple(op_pos) != (0, 0) and tuple(op_pos) not in self.walls and tuple(op_pos) not in self.food_positions:
                 self.opponents.append(op_pos)
 
+        # Generate toxic traps, avoiding start, walls, food, and opponents
+        self.toxic_traps = set()
+        num_traps = 5
+        occupied = {(0, 0)} | self.walls | self.food_positions | {tuple(op) for op in self.opponents}
+        while len(self.toxic_traps) < num_traps:
+            tx = random.randint(0, self.width - 1)
+            ty = random.randint(0, self.height - 1)
+            pos = (tx, ty)
+            if pos not in occupied and pos not in self.toxic_traps:
+                self.toxic_traps.add(pos)
+
         self.score = 0
         self.steps = 0
         self.collision = False
@@ -44,6 +56,7 @@ class VisualGridHuntGame:
             'agent_pos': list(self.agent_pos),
             'opponent_positions': [list(op) for op in self.opponents],
             'smells_food': tuple(self.agent_pos) in self.food_positions,
+            'smells_toxin': tuple(self.agent_pos) in self.toxic_traps,
             'hit_wall': tuple(self.agent_pos) in self.walls,
             'collision': self.collision,
             'score': self.score,
@@ -72,6 +85,9 @@ class VisualGridHuntGame:
         if tuple_pos in self.food_positions:
             self.food_positions.remove(tuple_pos)
             self.score += 20
+
+        if tuple_pos in self.toxic_traps:
+            self.score -= 15
 
         for op in self.opponents:
             move = random.choice(['Up', 'Down', 'Left', 'Right', 'Stay'])
@@ -146,6 +162,18 @@ class GridGameGUI:
             self.canvas.create_oval(x1, y1, x1 + self.cell_size * 0.5, y1 + self.cell_size * 0.5, fill="#f59e0b",
                                     outline="#d97706")
 
+        for tx, ty in self.env.toxic_traps:
+            x1 = tx * self.cell_size
+            y1 = (self.env.height - 1 - ty) * self.cell_size
+            x2 = x1 + self.cell_size
+            y2 = y1 + self.cell_size
+            self.canvas.create_polygon(
+                x1 + self.cell_size / 2, y1,
+                x2, y2,
+                x1, y2,
+                fill="#7c3aed", outline="#5b21b6"
+            )
+        
         for ox, oy in self.env.opponents:
             offset = self.cell_size * 0.2
             x1 = ox * self.cell_size + offset
