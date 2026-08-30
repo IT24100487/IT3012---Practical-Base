@@ -1,6 +1,7 @@
 # visual_grid_game.py
 import random
 import tkinter as tk
+from agent import SimpleReflexAgent, ModelBasedAgent
 
 
 class VisualGridHuntGame:
@@ -10,6 +11,7 @@ class VisualGridHuntGame:
         self.width = width
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
+        self.facing = 'Right'
 
         if custom_walls is not None:
             self.walls = set(custom_walls)
@@ -40,11 +42,22 @@ class VisualGridHuntGame:
         self.collision = False
 
     def get_percept(self) -> dict:
+        fx, fy = self.agent_pos
+        if self.facing == 'Up':
+            fy += 1
+        elif self.facing == 'Down':
+            fy -= 1
+        elif self.facing == 'Left':
+            fx -= 1
+        elif self.facing == 'Right':
+            fx += 1
+
+        out_of_bounds = not (0 <= fx < self.width and 0 <= fy < self.height)
+        wall_ahead = (fx, fy) in self.walls or out_of_bounds
+
         return {
-            'agent_pos': list(self.agent_pos),
-            'opponent_positions': [list(op) for op in self.opponents],
-            'smells_food': tuple(self.agent_pos) in self.food_positions,
-            'hit_wall': tuple(self.agent_pos) in self.walls,
+            'wall_ahead': wall_ahead,
+            'food_here': tuple(self.agent_pos) in self.food_positions,
             'collision': self.collision,
             'score': self.score,
             'remaining_food': len(self.food_positions)
@@ -52,6 +65,7 @@ class VisualGridHuntGame:
 
     def execute_action(self, action: str):
         self.steps += 1
+        self.facing = action 
         new_pos = list(self.agent_pos)
 
         if action == 'Up':
@@ -101,6 +115,7 @@ class GridGameGUI:
 
         self.env = VisualGridHuntGame(width=width, height=height, num_food=num_food, num_opponents=num_opponents,
                                       custom_walls=walls)
+        self.agent = ModelBasedAgent()
 
         # Dynamically calculate cell size so the total canvas fits nicely within a 600x600 window ceiling
         max_canvas_dim = 600
@@ -165,7 +180,8 @@ class GridGameGUI:
 
         def step():
             if not self.env.is_done():
-                action = random.choice(['Up', 'Down', 'Left', 'Right'])
+                percept = self.env.get_percept()
+                action = self.agent.sense_and_act(percept)
                 self.env.execute_action(action)
 
                 self.draw_grid()
