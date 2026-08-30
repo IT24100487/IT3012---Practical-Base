@@ -2,6 +2,8 @@
 import random
 import tkinter as tk
 
+from agent import SearchAgent
+
 
 class VisualGridHuntGame:
     """A flexible Pacman-style grid environment with support for configurable opponents and larger scales."""
@@ -43,6 +45,7 @@ class VisualGridHuntGame:
         return {
             'agent_pos': list(self.agent_pos),
             'opponent_positions': [list(op) for op in self.opponents],
+            'food_positions': list(self.food_positions),
             'smells_food': tuple(self.agent_pos) in self.food_positions,
             'hit_wall': tuple(self.agent_pos) in self.walls,
             'collision': self.collision,
@@ -101,6 +104,11 @@ class GridGameGUI:
 
         self.env = VisualGridHuntGame(width=width, height=height, num_food=num_food, num_opponents=num_opponents,
                                       custom_walls=walls)
+
+        self.agent = SearchAgent()
+        self.agent.active_algo = 'AStar'
+        self.agent.walls = self.env.walls
+        self.agent.grid_size = (self.env.width, self.env.height)
 
         # Dynamically calculate cell size so the total canvas fits nicely within a 600x600 window ceiling
         max_canvas_dim = 600
@@ -165,7 +173,8 @@ class GridGameGUI:
 
         def step():
             if not self.env.is_done():
-                action = random.choice(['Up', 'Down', 'Left', 'Right'])
+                percept = self.env.get_percept()
+                action = self.agent.sense_and_act(percept)
                 self.env.execute_action(action)
 
                 self.draw_grid()
